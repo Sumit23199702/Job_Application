@@ -171,4 +171,101 @@ const deleteProfile = async (req, res) => {
   }
 };
 
-module.exports = { createUser, loginUser, getProfile, deleteProfile };
+// Update Profile
+const updateProfile = async (req, res) => {
+  try {
+    let userId = req.userId;
+    let userData = req.body;
+
+    if (!userData || Object.keys(userData).length === 0) {
+      return res.status(400).json({ msg: "Bad Request! No Data Provided" });
+    }
+
+    let { fullName, email, password, mobile } = userData;
+
+    let updatedData = {};
+
+    if (fullName !== undefined) {
+      if (!isValid(fullName)) {
+        return res.status(400).json({ msg: "Full Name is Required" });
+      }
+
+      if (!isValidName(fullName)) {
+        return res.status(400).json({ msg: "Invalid Name" });
+      }
+      updatedData.fullName = fullName;
+    }
+
+    if (email !== undefined) {
+      if (!isValid(email)) {
+        return res.status(400).json({ msg: "Email is Required" });
+      }
+
+      if (!isValidEmail(email)) {
+        return res.status(400).json({ msg: "Invalid Email" });
+      }
+
+      let emailExist = await UserModel.findOne({ email, _id: { $ne: userId } });
+
+      if (emailExist) {
+        return res.status(400).json({ msg: "Email Already Exists" });
+      }
+
+      updatedData.email = email;
+    }
+
+    if (mobile !== undefined) {
+      if (!isValid(mobile)) {
+        return res.status(400).json({ msg: "Contact Number is Required" });
+      }
+
+      if (!isValidMobile(mobile)) {
+        return res.status(400).json({ msg: "Invalid Contact Number" });
+      }
+
+      const mobileNoExist = await UserModel.findOne({
+        mobile,
+        _id: { $ne: userId },
+      });
+      if (mobileNoExist) {
+        return res.status(400).json({ msg: "Contact Number Already Exist" });
+      }
+
+      updatedData.mobile = mobile;
+    }
+
+    if (password !== undefined) {
+      if (!isValid(password)) {
+        return res.status(400).json({ msg: "Password is Required" });
+      }
+
+      if (!isValidPassword(password)) {
+        return res.status(400).json({
+          msg: "Password must be 8-20 Chars with uppercase, lowercase, numbers and special characters.",
+        });
+      }
+
+      updatedData.password = await bcrypt.hash(password, 10);
+    }
+
+    let update = await UserModel.findByIdAndUpdate(userId, updatedData, {
+      new: true,
+    });
+    if (!update) {
+      return res.status(404).json({ msg: "User Not Found" });
+    }
+    return res
+      .status(200)
+      .json({ msg: "Profile Updated Successfully", update });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ msg: "Internal Server Error" });
+  }
+};
+module.exports = {
+  createUser,
+  loginUser,
+  getProfile,
+  deleteProfile,
+  updateProfile,
+};
